@@ -15,7 +15,6 @@ if (!process.env.JWT_SECRET) {
 @Module({
   imports: [
     JwtModule.register({
-      // global: true,
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1h' },
     }),
