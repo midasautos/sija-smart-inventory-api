@@ -77,6 +77,54 @@ export class UsersService {
 		return user
 	}
 
+	async findByEmailWithPassword(email: string): Promise<User | null> {
+		return this.userRepository
+			.createQueryBuilder('user')
+			.leftJoinAndSelect('user.student', 'student')
+			.leftJoinAndSelect('user.teacher', 'teacher')
+			.addSelect('user.password')
+			.where('user.email = :email', { email })
+			.getOne()
+	}
+
+	async findStudentByNis(nis: string | number): Promise<User | null> {
+		const student = await this.studentRepository.findOne({
+			where: { nis: Number(nis) },
+			relations: { user: true },
+		})
+
+		if (!student?.user) {
+			return null
+		}
+
+		return this.userRepository
+			.createQueryBuilder('user')
+			.leftJoinAndSelect('user.student', 'student')
+			.leftJoinAndSelect('user.teacher', 'teacher')
+			.addSelect('user.password')
+			.where('user.id = :id', { id: student.user.id })
+			.getOne()
+	}
+
+	async findTeacherByNip(nip: string | number): Promise<User | null> {
+		const teacher = await this.teacherRepository.findOne({
+			where: { nip: Number(nip) },
+			relations: { user: true },
+		})
+
+		if (!teacher?.user) {
+			return null
+		}
+
+		return this.userRepository
+			.createQueryBuilder('user')
+			.leftJoinAndSelect('user.student', 'student')
+			.leftJoinAndSelect('user.teacher', 'teacher')
+			.addSelect('user.password')
+			.where('user.id = :id', { id: teacher.user.id })
+			.getOne()
+	}
+
 	async update(id: string, updateUserDto: UpdateUserDto = {}): Promise<User> {
 		const user = await this.findOne(id)
 		const nextRole = updateUserDto?.role ?? user.role

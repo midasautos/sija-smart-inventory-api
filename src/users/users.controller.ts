@@ -4,6 +4,8 @@ import { UpdateUserDto } from "./dto/update-user.dto"
 import { diskStorage } from "multer"
 import { extname, join } from "path"
 import { FileInterceptor } from "@nestjs/platform-express"
+import { Roles } from "../auth/decorators/roles.decorator"
+import { userRole } from "./enums/role.enum"
 
 import {
 	Body,
@@ -26,6 +28,7 @@ const profilePictureStorage = diskStorage({
 })
 
 @Controller("users")
+@Roles(userRole.teacher)
 export class UsersController {
 	constructor(private readonly usersService: UsersService) {}
 
