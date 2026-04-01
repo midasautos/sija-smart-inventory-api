@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common"
+import { AuthModule } from "./auth/auth.module"
 import { AppService } from "./app.service"
 import { AppController } from "./app.controller"
 import dbConfig from "./config/typeorm.config"
@@ -29,6 +30,7 @@ import {
                     'typeorm',
                 ),
         }),
+        AuthModule,
         UsersModule,
 		MeModule,
     ],
