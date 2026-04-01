@@ -44,6 +44,29 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 
+## Me Endpoint
+
+Endpoint baru tersedia dengan prefix global `api`:
+
+- `GET /api/me` untuk ambil data user sendiri
+- `PATCH /api/me` untuk edit data user sendiri secara partial
+- `PATCH /api/me/pfp` untuk update profile picture (multipart form-data, field file: `pfp`)
+
+Karena auth guard belum tersedia di project ini, identitas user diambil dari:
+
+- `request.user.id` (jika nanti auth sudah dipasang), atau
+- header `x-user-id` sebagai fallback sementara
+
+File profile picture disimpan di folder `images/pfp` dan path file disimpan ke kolom `pfp` pada tabel user.
+
+Profile picture dapat diakses publik melalui URL:
+
+- `GET /images/pfp/:filename`
+
+Path yang disimpan di kolom `pfp` adalah format URL publik, contoh:
+
+- `/images/pfp/1711880471000-123456789.jpg`
+
 ## Run tests
 
 ```bash
