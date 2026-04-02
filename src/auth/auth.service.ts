@@ -4,23 +4,32 @@ import { LoginGuruDTO } from './dto/login-guru.dto';
 import { RefreshTokenDTO } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { userRole } from '../users/enums/role.enum';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entities';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+  ) {}
 
   async loginSiswa(dto: LoginSiswaDTO) {
-    const password = await bcrypt.hash('user123', 12);
-    const user = {
-      email: 'user@gmail.com',
-      nis: '12345',
-      password,
-    };
-
-    if (dto.email != null && dto.email !== user.email) {
-      throw new UnauthorizedException('Maaf Email / NIS tidak sesuai');
+    if (!dto.email && !dto.nis) {
+      throw new UnauthorizedException('Email atau NIS harus diisi');
     }
-    if (dto.nis != null && dto.nis !== user.nis) {
+
+    let user: User | null = null;
+    if (dto.email) {
+      user = await this.usersService.findByEmailWithPassword(dto.email.trim());
+    }
+
+    if (!user && dto.nis) {
+      user = await this.usersService.findStudentByNis(dto.nis);
+    }
+
+    if (!user || user.role !== userRole.student) {
       throw new UnauthorizedException('Maaf Email / NIS tidak sesuai');
     }
 
@@ -29,23 +38,32 @@ export class AuthService {
       throw new UnauthorizedException('Maaf Password tidak sesuai');
     }
 
-    const payload = { sub: user.nis, email: user.email, role: 'siswa' };
-    return this.buildTokenResponse(payload, { email: user.email, nis: user.nis });
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    return this.buildTokenResponse(payload, {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      student: user.student,
+      access: this.getAccessRights(user.role),
+    });
   }
 
   async loginGuru(dto: LoginGuruDTO) {
-    const password = await bcrypt.hash('user123', 12);
-    const user = {
-      email: 'user@gmail.com',
-      nip: '12345',
-      password,
-    };
-
-    if (dto.email != null && dto.email !== user.email) {
-      throw new UnauthorizedException('Maaf Email / NIS tidak sesuai');
+    if (!dto.email && !dto.nip) {
+      throw new UnauthorizedException('Email atau NIP harus diisi');
     }
-    if (dto.nip != null && dto.nip !== user.nip) {
-      throw new UnauthorizedException('Maaf Email / NIS tidak sesuai');
+
+    let user: User | null = null;
+    if (dto.email) {
+      user = await this.usersService.findByEmailWithPassword(dto.email.trim());
+    }
+
+    if (!user && dto.nip) {
+      user = await this.usersService.findTeacherByNip(dto.nip);
+    }
+
+    if (!user || user.role !== userRole.teacher) {
+      throw new UnauthorizedException('Maaf Email / NIP tidak sesuai');
     }
 
     const verified = await bcrypt.compare(dto.password, user.password);
@@ -53,8 +71,14 @@ export class AuthService {
       throw new UnauthorizedException('Maaf Password tidak sesuai');
     }
 
-    const payload = { sub: user.nip, email: user.email, role: 'guru' };
-    return this.buildTokenResponse(payload, { email: user.email, nip: user.nip });
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    return this.buildTokenResponse(payload, {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      teacher: user.teacher,
+      access: this.getAccessRights(user.role),
+    });
   }
 
   async refreshToken(dto: RefreshTokenDTO) {
@@ -67,18 +91,39 @@ export class AuthService {
         secret: process.env.JWT_SECRET,
       });
 
+      const user = await this.usersService.findOne(payload.sub)
       const userPayload = {
-        sub: payload.sub,
-        email: payload.email,
-        role: payload.role,
+        sub: user.id,
+        email: user.email,
+        role: user.role,
       };
 
       return this.buildTokenResponse(userPayload, {
-        email: payload.email,
-        id: payload.sub,
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        student: user.student,
+        teacher: user.teacher,
+        access: this.getAccessRights(user.role),
       });
     } catch (error) {
       throw new UnauthorizedException('Refresh token invalid or expired');
+    }
+  }
+
+  private getAccessRights(role: string) {
+    switch (role) {
+      case userRole.teacher:
+        return ['all'];
+      case userRole.student:
+        return [
+          'itemBorrowRequest',
+          'history',
+          'itemQuantity',
+          'status',
+        ];
+      default:
+        return [];
     }
   }
 
